@@ -8,5 +8,9 @@ export class ProductService {
     public getProducts() {
       return this.products;
     }
+
+    public getProductById(id: string) {
+      return this.products.find(p => p.id === parseInt(id));
+    }
   }
   

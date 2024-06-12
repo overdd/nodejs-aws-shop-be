@@ -5,10 +5,12 @@
     "product-service": "bin/product-service.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npx rimraf dist && tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "npm run build && npm run synth && cdk deploy"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
