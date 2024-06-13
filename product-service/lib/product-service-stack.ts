@@ -38,6 +38,6 @@ export class ProductServiceStack extends cdk.Stack {
     productResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(getProductsById)
-    );
+    );    
   }
 }

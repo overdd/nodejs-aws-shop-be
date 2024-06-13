@@ -1,7 +1,9 @@
-### BE endpoint
+### BE endpoints
 
 <https://9hf5z84ova.execute-api.us-east-1.amazonaws.com/prod/>
 <https://9hf5z84ova.execute-api.us-east-1.amazonaws.com/prod/products>
+<https://9hf5z84ova.execute-api.us-east-1.amazonaws.com/prod/products/{id}>
+<https://9hf5z84ova.execute-api.us-east-1.amazonaws.com/prod/docs>
 
 # Welcome to your CDK TypeScript project
 
