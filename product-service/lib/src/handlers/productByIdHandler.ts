@@ -21,3 +21,5 @@ exports.handler = async (event: { pathParameters: { productId: any } }) => {
     };
   }
 };
+
+export default exports.handler;

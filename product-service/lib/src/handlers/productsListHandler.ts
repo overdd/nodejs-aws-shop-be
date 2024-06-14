@@ -11,3 +11,5 @@ exports.handler = async () => {
     body: JSON.stringify(products)
   };
 };
+
+export default exports.handler;
