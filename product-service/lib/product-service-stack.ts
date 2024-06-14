@@ -9,7 +9,7 @@ export class ProductServiceStack extends cdk.Stack {
 
     const getProductsList = new lambda.Function(this, "getProductsList", {
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "productsListHandler.handler",
+      handler: "handlers/productsListHandler.handler",
       code: lambda.Code.fromAsset("dist", {
         exclude: ["*.d.ts"],
       }),
@@ -17,7 +17,7 @@ export class ProductServiceStack extends cdk.Stack {
 
     const getProductsById = new lambda.Function(this, "getProductsById", {
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "productByIdHandler.handler",
+      handler: "handlers/productByIdHandler.handler",
       code: lambda.Code.fromAsset("dist", {
         exclude: ["*.d.ts"],
       }),

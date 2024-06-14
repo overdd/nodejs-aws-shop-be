@@ -1,5 +1,5 @@
-import { ProductService } from "./product-service";
-import { corsHeaders } from "./support/constants";
+import { ProductService } from "../product-service";
+import { corsHeaders } from "../support/constants";
 
 const productService = new ProductService();
 

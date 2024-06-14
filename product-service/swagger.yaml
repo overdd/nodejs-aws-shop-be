@@ -2,6 +2,8 @@ openapi: 3.0.0
 info:
   title: Products API
   version: 1.0.0
+servers:
+  - url: https://9hf5z84ova.execute-api.us-east-1.amazonaws.com/prod
 paths:
   /products:
     get:
