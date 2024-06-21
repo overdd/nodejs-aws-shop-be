@@ -15,12 +15,12 @@ export class ProductServiceStack extends cdk.Stack {
     const productsTable = dynamodb.Table.fromTableName(
       this,
       "ProductsTable",
-      process.env.DYNAMO_TABLE_PRODUCTS || 'products'
+      process.env.DYNAMO_TABLE_PRODUCTS || "products"
     );
     const stocksTable = dynamodb.Table.fromTableName(
       this,
       "StocksTable",
-      process.env.DYNAMO_TABLE_STOCKS || 'stocks'
+      process.env.DYNAMO_TABLE_STOCKS || "stocks"
     );
 
     const getProductsList = new lambda.Function(this, "getProductsList", {
@@ -30,8 +30,8 @@ export class ProductServiceStack extends cdk.Stack {
         exclude: ["*.d.ts"],
       }),
       environment: {
-        DYNAMO_TABLE_PRODUCTS: process.env.DYNAMO_TABLE_PRODUCTS || 'products',
-        DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || 'stocks',
+        DYNAMO_TABLE_PRODUCTS: process.env.DYNAMO_TABLE_PRODUCTS || "products",
+        DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || "stocks",
       },
     });
 
@@ -42,8 +42,20 @@ export class ProductServiceStack extends cdk.Stack {
         exclude: ["*.d.ts"],
       }),
       environment: {
-        DYNAMO_TABLE_PRODUCTS: process.env.DYNAMO_TABLE_PRODUCTS || 'products',
-        DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || 'stocks',
+        DYNAMO_TABLE_PRODUCTS: process.env.DYNAMO_TABLE_PRODUCTS || "products",
+        DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || "stocks",
+      },
+    });
+
+    const createProduct = new lambda.Function(this, "createProduct", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "handlers/createProductHandler.handler",
+      code: lambda.Code.fromAsset("dist", {
+        exclude: ["*.d.ts"],
+      }),
+      environment: {
+        DYNAMO_TABLE_PRODUCTS: process.env.DYNAMO_TABLE_PRODUCTS || "products",
+        DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || "stocks",
       },
     });
 
@@ -54,8 +66,11 @@ export class ProductServiceStack extends cdk.Stack {
 
     productsTable.grantReadWriteData(getProductsList);
     productsTable.grantReadWriteData(getProductsById);
+    productsTable.grantReadWriteData(createProduct);
     stocksTable.grantReadWriteData(getProductsList);
     stocksTable.grantReadWriteData(getProductsById);
+    stocksTable.grantReadWriteData(createProduct);
+
 
     const productsResource = api.root.addResource("products");
     const productResource = productsResource.addResource("{productId}");
@@ -63,9 +78,13 @@ export class ProductServiceStack extends cdk.Stack {
       "GET",
       new apigateway.LambdaIntegration(getProductsList)
     );
+    productsResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(createProduct)
+    );
     productResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(getProductsById)
-    );    
+    );
   }
 }
