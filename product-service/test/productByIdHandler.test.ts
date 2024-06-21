@@ -1,5 +1,5 @@
 
-import { ProductService } from "../lib/src/product-service";
+import { DynamoDbService } from "../lib/src/dynamodb-service";
 import { corsHeaders } from "../lib/src/support/constants";
 import handler from "../lib/src/handlers/productByIdHandler"; // Assuming the file is named handler.js
 
@@ -13,7 +13,7 @@ describe('productByIdHandler unit tests', () => {
 
   it('should return a 200 response with the product when it is found', async () => {
     const mockProduct = { id: '1', name: 'Test Product' };
-    (ProductService as jest.MockedClass<typeof ProductService>).prototype.getProductById.mockReturnValue(mockProduct);
+    (DynamoDbService as jest.MockedClass<typeof DynamoDbService>).prototype.getProductById.mockReturnValue(mockProduct);
 
     const event = {
       pathParameters: {
@@ -26,11 +26,11 @@ describe('productByIdHandler unit tests', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers).toEqual(corsHeaders);
     expect(JSON.parse(response.body)).toEqual(mockProduct);
-    expect(ProductService.prototype.getProductById).toHaveBeenCalledWith('1');
+    expect(DynamoDbService.prototype.getProductById).toHaveBeenCalledWith('1');
   });
 
   it('should return a 404 response when the product is not found', async () => {
-    (ProductService as jest.MockedClass<typeof ProductService>).prototype.getProductById.mockReturnValue(null);
+    (DynamoDbService as jest.MockedClass<typeof DynamoDbService>).prototype.getProductById.mockReturnValue(null);
 
     const event = {
       pathParameters: {
@@ -43,6 +43,6 @@ describe('productByIdHandler unit tests', () => {
     expect(response.statusCode).toBe(404);
     expect(response.headers).toEqual(corsHeaders);
     expect(JSON.parse(response.body)).toEqual({ message: 'Product not found' });
-    expect(ProductService.prototype.getProductById).toHaveBeenCalledWith('1');
+    expect(DynamoDbService.prototype.getProductById).toHaveBeenCalledWith('1');
   });
 });

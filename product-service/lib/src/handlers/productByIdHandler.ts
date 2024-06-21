@@ -1,11 +1,14 @@
-import { ProductService } from "../product-service";
+import { DynamoDbService } from "../dynamodb-service";
 import { corsHeaders } from "../support/constants";
 
-const productService = new ProductService();
+const productService = new DynamoDbService(
+  process.env.DYNAMO_TABLE_PRODUCTS || "products",
+  process.env.DYNAMO_TABLE_STOCKS || "stocks"
+);
 
 exports.handler = async (event: { pathParameters: { productId: any } }) => {
   const { productId } = event.pathParameters;
-  const product = productService.getProductById(productId);
+  const product = await productService.getProductById(productId);
 
   if (product) {
     return {
