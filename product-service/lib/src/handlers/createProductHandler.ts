@@ -8,12 +8,21 @@ const dynamoDbService = new DynamoDbService(
 );
 
 exports.handler = async (event: any) => {
-  const product = await dynamoDbService.createProduct(JSON.parse(event.body));
-  return {
-    statusCode: 201,
-    headers: corsHeaders,
-    body: JSON.stringify(product),
-  };
+  try {
+    const product = await dynamoDbService.createProduct(JSON.parse(event.body));
+    return {
+      statusCode: 201,
+      headers: corsHeaders,
+      body: JSON.stringify(product),
+    };
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ message: "Error fetching product" }),
+    };
+  }
 };
 
 export default exports.handler;

@@ -7,20 +7,28 @@ const dynamoDbService = new DynamoDbService(
 );
 
 exports.handler = async (event: { pathParameters: { productId: string } }) => {
-  const { productId } = event.pathParameters;
-  const product = await dynamoDbService.getProductById(productId);
-
-  if (product) {
+  try {
+    const { productId } = event.pathParameters;
+    const product = await dynamoDbService.getProductById(productId);
+    if (product) {
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(product),
+      };
+    } else {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: "Product not found" }),
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching product:", error);
     return {
-      statusCode: 200,
+      statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify(product),
-    };
-  } else {
-    return {
-      statusCode: 404,
-      headers: corsHeaders,
-      body: JSON.stringify({ message: "Product not found" }),
+      body: JSON.stringify({ message: "Error fetching product" }),
     };
   }
 };
