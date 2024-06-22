@@ -4,7 +4,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as dotenv from "dotenv";
-import * as path from "path";
+import { createProductSchema } from "../lib/src/support/schemas";
 
 dotenv.config();
 
@@ -71,7 +71,6 @@ export class ProductServiceStack extends cdk.Stack {
     stocksTable.grantReadWriteData(getProductsById);
     stocksTable.grantReadWriteData(createProduct);
 
-
     const productsResource = api.root.addResource("products");
     const productResource = productsResource.addResource("{productId}");
     productsResource.addMethod(
@@ -80,7 +79,24 @@ export class ProductServiceStack extends cdk.Stack {
     );
     productsResource.addMethod(
       "POST",
-      new apigateway.LambdaIntegration(createProduct)
+      new apigateway.LambdaIntegration(createProduct),
+      {
+        requestValidator: new apigateway.RequestValidator(
+          this,
+          "CreateProductRequestValidator",
+          {
+            restApi: productsResource.api,
+            validateRequestBody: true,
+            validateRequestParameters: false,
+          }
+        ),
+        requestModels: {
+          "application/json": new apigateway.Model(this, "CreateProductModel", {
+            restApi: productsResource.api,
+            schema: createProductSchema,
+          }),
+        },
+      }
     );
     productResource.addMethod(
       "GET",
