@@ -7,6 +7,7 @@ const dynamoDbService = new DynamoDbService(
 );
 
 exports.handler = async (event: object) => {
+  console.log("Received event:", JSON.stringify(event, null, 2));
   try {
     const products = await dynamoDbService.getProducts();
     return {

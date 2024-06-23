@@ -7,6 +7,7 @@ const dynamoDbService = new DynamoDbService(
 );
 
 exports.handler = async (event: { pathParameters: { productId: string } }) => {
+  console.log("Received event:", JSON.stringify(event, null, 2));
   try {
     const { productId } = event.pathParameters;
     const product = await dynamoDbService.getProductById(productId);

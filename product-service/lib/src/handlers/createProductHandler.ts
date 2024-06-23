@@ -8,6 +8,7 @@ const dynamoDbService = new DynamoDbService(
 );
 
 exports.handler = async (event: any) => {
+  console.log("Received event:", JSON.stringify(event, null, 2));
   try {
     const product = await dynamoDbService.createProduct(JSON.parse(event.body));
     return {
