@@ -52,6 +52,7 @@ export class ImportServiceStack extends cdk.Stack {
 
     bucket.grantReadWrite(importProductsFile);
     bucket.grantReadWrite(importFileParser);
+    bucket.grantDelete(importFileParser);
 
     const api = new apigateway.RestApi(this, "ImportServiceApi", {
       restApiName: "Import Service API",
