@@ -1,0 +1,46 @@
+export const APIGatewayProxyEventHeaders = {
+    body: null,
+      headers: {},
+      multiValueHeaders: {},
+      httpMethod: "",
+      isBase64Encoded: false,
+      path: "",
+      pathParameters: null,
+      multiValueQueryStringParameters: null,
+      stageVariables: null,
+      requestContext: {
+        accountId: "",
+        apiId: "",
+        authorizer: undefined,
+        protocol: "",
+        httpMethod: "",
+        identity: {
+          accessKey: null,
+          accountId: null,
+          apiKey: null,
+          apiKeyId: null,
+          caller: null,
+          clientCert: null,
+          cognitoAuthenticationProvider: null,
+          cognitoAuthenticationType: null,
+          cognitoIdentityId: null,
+          cognitoIdentityPoolId: null,
+          principalOrgId: null,
+          sourceIp: "",
+          user: null,
+          userAgent: null,
+          userArn: null,
+        },
+        path: "",
+        stage: "",
+        requestId: "",
+        requestTimeEpoch: 0,
+        resourceId: "",
+        resourcePath: "",
+      },
+      resource: "",
+}
+
+export const PRESIGNED_URL = "https://example.com/presigned-url"
+
+export const fakeCsv = "title,description,price,count\n1,Candy 1,Candy description1, 1.99, 20"
