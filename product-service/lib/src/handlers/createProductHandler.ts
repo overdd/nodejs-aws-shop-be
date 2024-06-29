@@ -1,19 +1,20 @@
 import { DynamoDbService } from "../dynamodb-service";
 import { corsHeaders } from "../support/constants";
+import { PostProductsBody } from "../support/interfaces";
 
 const dynamoDbService = new DynamoDbService(
   process.env.DYNAMO_TABLE_PRODUCTS || "products",
   process.env.DYNAMO_TABLE_STOCKS || "stocks"
 );
 
-exports.handler = async (event: object) => {
+exports.handler = async (event: any) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
   try {
-    const products = await dynamoDbService.getProducts();
+    const product = await dynamoDbService.createProduct(JSON.parse(event.body));
     return {
-      statusCode: 200,
+      statusCode: 201,
       headers: corsHeaders,
-      body: JSON.stringify(products),
+      body: JSON.stringify(product),
     };
   } catch (error) {
     console.error("Error fetching product:", error);

@@ -1,15 +1,15 @@
-import { ProductService } from './../lib/src/product-service';
+import { DynamoDbService} from './../lib/src/dynamodb-service';
 
 describe('ProductService', () => {
-  let productService: ProductService;
+  let dynamoDbService: DynamoDbService;
 
   beforeEach(() => {
-    productService = new ProductService();
+    dynamoDbService = new DynamoDbService('products', 'stocks');
   });
 
   describe('Product service unit tests', () => {
     it('should return the list of products', () => {
-      const products = productService.getProducts();
+      const products = dynamoDbService.getProducts();
       expect(products).toHaveLength(3);
       expect(products).toEqual([
         { id: 1, title: 'Candy 1', description: 'This is product 1', price: 9.99 },
@@ -21,12 +21,12 @@ describe('ProductService', () => {
 
   describe('getProductById function', () => {
     it('should return the product with the given id', () => {
-      const product = productService.getProductById('2');
+      const product = dynamoDbService.getProductById('2');
       expect(product).toEqual({ id: 2, title: 'Candy 2', description: 'This is product 2', price: 14.99 });
     });
 
     it('should return undefined if the product is not found', () => {
-      const product = productService.getProductById('4');
+      const product = dynamoDbService.getProductById('4');
       expect(product).toBeUndefined();
     });
   });
