@@ -41,8 +41,7 @@ export class ImportServiceStack extends cdk.Stack {
     importFileParser.addEventSource(
       new lambdaEventSources.S3EventSource(bucket as s3.Bucket, {
         events: [
-          s3.EventType.OBJECT_CREATED,
-          s3.EventType.OBJECT_REMOVED
+          s3.EventType.OBJECT_CREATED
         ],
         filters: [
           { prefix: 'uploaded/' },
