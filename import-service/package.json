@@ -1,0 +1,37 @@
+{
+  "name": "import-service",
+  "version": "0.1.0",
+  "bin": {
+    "import-service": "bin/import-service.js"
+  },
+  "scripts": {
+    "build": "npx rimraf dist && tsc && cd dist && npm init -y && npm i csv-parser",
+    "watch": "tsc -w",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "npm run build && npm run synth && cdk deploy",
+    "db:populate": "npx ts-node scripts/populateDb.ts"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.140",
+    "@types/jest": "^29.5.12",
+    "@types/node": "20.12.7",
+    "aws-cdk": "2.144.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.4.5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
+    "aws-cdk-lib": "2.144.0",
+    "aws-lambda": "^1.0.7",
+    "aws-sdk-client-mock": "^4.0.1",
+    "constructs": "^10.0.0",
+    "csv-parser": "^3.0.0",
+    "source-map-support": "^0.5.21"
+  }
+}
