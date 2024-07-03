@@ -16,17 +16,19 @@ exports.handler = async (event: SQSEvent) => {
   console.log("Received SQS event:", JSON.stringify(event, null, 2));
 
   for (const record of event.Records) {
+    const parsedBody = JSON.parse(record.body);
+    parsedBody.price = Number(parsedBody.price);
+    parsedBody.count = Number(parsedBody.count);
+
     try {
-      const isValid = validate(JSON.parse(record.body));
+      const isValid = validate(parsedBody);
       if (!isValid) {
         console.error(
           `Invalid product data: ${ajv.errorsText(validate.errors)}`
         );
         continue;
       }
-      const product = await dynamoDbService.createProduct(
-        JSON.parse(record.body)
-      );
+      const product = await dynamoDbService.createProduct(parsedBody);
       return {
         statusCode: 201,
         headers: corsHeaders,

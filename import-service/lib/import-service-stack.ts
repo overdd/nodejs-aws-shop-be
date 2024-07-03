@@ -4,6 +4,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CANDY_STORE_BUCKET } from "./src/support/constants";
@@ -43,6 +44,11 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const catalogItemsQueue = new sqs.Queue(this, "CatalogItemsQueue", {
+      queueName: "catalogItemsQueue",
+      visibilityTimeout: cdk.Duration.seconds(300),
+    });
+
     const importFileParser = new lambda.Function(this, "ImportFileParser", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "handlers/importFileParserHandler.handler",
@@ -51,6 +57,7 @@ export class ImportServiceStack extends cdk.Stack {
       }),
       environment: {
         BUCKET_NAME: bucket.bucketName,
+        CATALOG_ITEMS_QUEUE_URL: catalogItemsQueue.queueUrl,
       },
     });
 
@@ -70,11 +77,6 @@ export class ImportServiceStack extends cdk.Stack {
         },
       }
     );
-
-    const catalogItemsQueue = new sqs.Queue(this, "CatalogItemsQueue", {
-      queueName: "catalogItemsQueue",
-      visibilityTimeout: cdk.Duration.seconds(300),
-    });
 
     importFileParser.addEventSource(
       new lambdaEventSources.S3EventSource(bucket as s3.Bucket, {
@@ -109,7 +111,23 @@ export class ImportServiceStack extends cdk.Stack {
       })
     );
 
+    const sqsSendMessagePolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sqs:SendMessage"],
+      resources: [`${catalogItemsQueue.queueArn}`],
+    });
+
+    const importFileParserSQSPolicy = new iam.Policy(
+      this,
+      "ImportFileParserSQSPolicy",
+      {
+        statements: [sqsSendMessagePolicy],
+      }
+    );
+
     productsTable.grantReadWriteData(catalogBatchProcess);
     stocksTable.grantReadWriteData(catalogBatchProcess);
+
+    importFileParser.role?.attachInlinePolicy(importFileParserSQSPolicy);
   }
 }
