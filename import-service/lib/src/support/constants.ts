@@ -10,3 +10,4 @@ export const corsHeaders = {
     "Access-Control-Allow-Headers": "Content-Type",
   };
   
+export const CSV_HEADER = 'title,description,price,count';
