@@ -6,6 +6,8 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import csv from "csv-parser";
+import { Readable } from "stream";
 import { CSV_HEADER } from "../support/constants";
 
 const s3Client = new S3Client({});
@@ -33,55 +35,49 @@ async function processRecord(record: S3EventRecord) {
   });
 
   const response = await s3Client.send(getObjectCommand);
-  const fileData = await response.Body?.transformToString();
+  const readableStream = response.Body as Readable;
 
-  if (!fileData) {
-    console.error("Error getting file data");
-    return;
-  }
+  return new Promise<void>((resolve, reject) => {
+    readableStream
+      .pipe(csv())
+      .on("data", async (data: any) => {
+        console.log("Parsed record:", data);
+        const sendMessageCommand = new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify(data),
+        });
+        console.log(
+          `Sending messages to SQS: ${JSON.stringify(sendMessageCommand)}`
+        );
+        const result = await sqsClient.send(sendMessageCommand);
+        console.log(`Result: ${JSON.stringify(result)}`);
+      })
+      .on("error", (err: any) => {
+        console.error("Error parsing CSV:", err);
+        reject(err);
+      })
+      .on("end", async () => {
+        console.log("Finished processing object:", key);
 
-  const csvLines = fileData.split("\n");
+        const timestamp = new Date().toISOString();
+        const newKey = `parsed/${timestamp}-${key.split("/").pop()}`;
 
-  for (const line of csvLines) {
-    if (line.trim() !== "" && line.trim() !== CSV_HEADER) {
-      const parts = line.split(",");
-      const parsedObject = {
-        title: parts[0],
-        description: parts[1],
-        price: parseFloat(parts[2]),
-        count: parseInt(parts[3], 10),
-      };
-      const sendMessageCommand = new SendMessageCommand({
-        QueueUrl: queueUrl,
-        MessageBody: JSON.stringify(parsedObject),
+        const copyObjectCommand = new CopyObjectCommand({
+          Bucket: bucketName,
+          CopySource: `${bucketName}/${key}`,
+          Key: newKey,
+        });
+        await s3Client.send(copyObjectCommand);
+
+        const deleteObjectCommand = new DeleteObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        });
+        await s3Client.send(deleteObjectCommand);
+        console.log(`Moved object from ${key} to ${newKey}`);
+        resolve();
       });
-      console.log(
-        `Sending messages to SQS: ${JSON.stringify(sendMessageCommand)}`
-      );
-      const result = await sqsClient.send(sendMessageCommand);
-      console.log(`Result: ${JSON.stringify(result)}`);
-    }
-  }
-
-  console.log("Finished processing object:", key);
-
-  const timestamp = new Date().toISOString();
-  const newKey = `parsed/${timestamp}-${key.split("/").pop()}`;
-
-  const copyObjectCommand = new CopyObjectCommand({
-    Bucket: bucketName,
-    CopySource: `${bucketName}/${key}`,
-    Key: newKey,
   });
-  await s3Client.send(copyObjectCommand);
-
-  const deleteObjectCommand = new DeleteObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-  });
-  await s3Client.send(deleteObjectCommand);
-
-  console.log(`Moved object from ${key} to ${newKey}`);
 }
 
 export default exports.handler;
