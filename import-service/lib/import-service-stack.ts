@@ -8,6 +8,8 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CANDY_STORE_BUCKET } from "./src/support/constants";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -61,6 +63,16 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const createProductTopic = new sns.Topic(this, "createProductTopic", {
+      topicName: "createProductTopic",
+      displayName: "Product creation notification topic",
+    });
+    createProductTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        process.env.CLIENT_EMAIL || "test@gmail.com"
+      )
+    );
+
     const catalogBatchProcess = new lambda.Function(
       this,
       "CatalogBatchProcess",
@@ -74,6 +86,7 @@ export class ImportServiceStack extends cdk.Stack {
           DYNAMO_TABLE_PRODUCTS:
             process.env.DYNAMO_TABLE_PRODUCTS || "products",
           DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || "stocks",
+          CREATE_PRODUCT_TOPIC_ARN: createProductTopic.topicArn,
         },
       }
     );
@@ -111,7 +124,7 @@ export class ImportServiceStack extends cdk.Stack {
       })
     );
 
-    const sqsSendMessagePolicy = new iam.PolicyStatement({
+    const sqsSendMessagePolicyStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ["sqs:SendMessage"],
       resources: [`${catalogItemsQueue.queueArn}`],
@@ -121,7 +134,7 @@ export class ImportServiceStack extends cdk.Stack {
       this,
       "ImportFileParserSQSPolicy",
       {
-        statements: [sqsSendMessagePolicy],
+        statements: [sqsSendMessagePolicyStatement],
       }
     );
 
@@ -129,5 +142,20 @@ export class ImportServiceStack extends cdk.Stack {
     stocksTable.grantReadWriteData(catalogBatchProcess);
 
     importFileParser.role?.attachInlinePolicy(importFileParserSQSPolicy);
+
+    const snsPublishPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sns:Publish"],
+      resources: ["*"],
+    });
+
+    const catalogBatchProcessSNSPolicy = new iam.Policy(
+      this,
+      "CatalogBatchProcessSNSPolicy",
+      {
+        statements: [snsPublishPolicyStatement],
+      }
+    );
+    catalogBatchProcess.role?.attachInlinePolicy(catalogBatchProcessSNSPolicy);
   }
 }
