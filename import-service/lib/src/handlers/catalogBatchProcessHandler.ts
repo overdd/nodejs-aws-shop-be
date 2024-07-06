@@ -33,7 +33,7 @@ exports.handler = async (event: SQSEvent) => {
 
       const publishCommand = new PublishCommand({
         TopicArn: process.env.CREATE_PRODUCT_TOPIC_ARN,
-        Message: `Hi! New product was just created: ${JSON.stringify(product)}`,
+        Message: `${JSON.stringify(product)}`,
         Subject: "Candy store: New product created in DB",
       });
 

@@ -73,6 +73,19 @@ export class ImportServiceStack extends cdk.Stack {
       )
     );
 
+    createProductTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        process.env.CLIENT_EMAIL_FILTERED || "test2@gmail.com",
+        {
+          filterPolicy: {
+            price: sns.SubscriptionFilter.numericFilter({
+              greaterThan: 5,
+            }),
+          },
+        }
+      )
+    );
+
     const catalogBatchProcess = new lambda.Function(
       this,
       "CatalogBatchProcess",
