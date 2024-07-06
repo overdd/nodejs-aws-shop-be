@@ -6,10 +6,8 @@ import productSchema from "./../support/schemas/productSchema.json";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 
 const snsClient = new SNSClient();
-
 const ajv = new Ajv();
 const validate = ajv.compile(productSchema);
-
 const dynamoDbService = new DynamoDbService(
   process.env.DYNAMO_TABLE_PRODUCTS || "products",
   process.env.DYNAMO_TABLE_STOCKS || "stocks"
@@ -36,9 +34,9 @@ exports.handler = async (event: SQSEvent) => {
       const publishCommand = new PublishCommand({
         TopicArn: process.env.CREATE_PRODUCT_TOPIC_ARN,
         Message: `Hi! New product was just created: ${JSON.stringify(product)}`,
-        Subject: 'Candy store: New product created in DB',
+        Subject: "Candy store: New product created in DB",
       });
-    
+
       await snsClient.send(publishCommand);
 
       return {
@@ -55,6 +53,8 @@ exports.handler = async (event: SQSEvent) => {
       };
     }
   }
-  
+
   return { statusCode: 200, body: "Products created successfully" };
 };
+
+export default exports.handler;
