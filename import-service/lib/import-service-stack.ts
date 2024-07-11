@@ -3,8 +3,16 @@ import { Construct } from "constructs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CANDY_STORE_BUCKET } from "./src/support/constants";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 export class ImportServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -14,6 +22,17 @@ export class ImportServiceStack extends cdk.Stack {
       this,
       CANDY_STORE_BUCKET.BUCKET_NAME,
       CANDY_STORE_BUCKET.BUCKET_NAME
+    );
+
+    const productsTable = dynamodb.Table.fromTableName(
+      this,
+      "ProductsTable",
+      process.env.DYNAMO_TABLE_PRODUCTS || "products"
+    );
+    const stocksTable = dynamodb.Table.fromTableName(
+      this,
+      "StocksTable",
+      process.env.DYNAMO_TABLE_STOCKS || "stocks"
     );
 
     const importProductsFile = new lambda.Function(this, "ImportProductsFile", {
@@ -27,6 +46,11 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const catalogItemsQueue = new sqs.Queue(this, "CatalogItemsQueue", {
+      queueName: "catalogItemsQueue",
+      visibilityTimeout: cdk.Duration.seconds(300),
+    });
+
     const importFileParser = new lambda.Function(this, "ImportFileParser", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "handlers/importFileParserHandler.handler",
@@ -35,17 +59,55 @@ export class ImportServiceStack extends cdk.Stack {
       }),
       environment: {
         BUCKET_NAME: bucket.bucketName,
+        CATALOG_ITEMS_QUEUE_URL: catalogItemsQueue.queueUrl,
       },
     });
 
+    const createProductTopic = new sns.Topic(this, "createProductTopic", {
+      topicName: "createProductTopic",
+      displayName: "Product creation notification topic",
+    });
+    createProductTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        process.env.CLIENT_EMAIL || "test@gmail.com"
+      )
+    );
+
+    createProductTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        process.env.CLIENT_EMAIL_FILTERED || "test2@gmail.com",
+        {
+          filterPolicy: {
+            price: sns.SubscriptionFilter.numericFilter({
+              greaterThan: 5,
+            }),
+          },
+        }
+      )
+    );
+
+    const catalogBatchProcess = new lambda.Function(
+      this,
+      "CatalogBatchProcess",
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: "handlers/catalogBatchProcessHandler.handler",
+        code: lambda.Code.fromAsset("dist", {
+          exclude: ["*.d.ts"],
+        }),
+        environment: {
+          DYNAMO_TABLE_PRODUCTS:
+            process.env.DYNAMO_TABLE_PRODUCTS || "products",
+          DYNAMO_TABLE_STOCKS: process.env.DYNAMO_TABLE_STOCKS || "stocks",
+          CREATE_PRODUCT_TOPIC_ARN: createProductTopic.topicArn,
+        },
+      }
+    );
+
     importFileParser.addEventSource(
       new lambdaEventSources.S3EventSource(bucket as s3.Bucket, {
-        events: [
-          s3.EventType.OBJECT_CREATED
-        ],
-        filters: [
-          { prefix: 'uploaded/' },
-        ],
+        events: [s3.EventType.OBJECT_CREATED],
+        filters: [{ prefix: "uploaded/" }],
       })
     );
 
@@ -60,14 +122,53 @@ export class ImportServiceStack extends cdk.Stack {
 
     const importResource = api.root.addResource("import");
     const importMethod = importResource.addMethod(
-      'GET',
+      "GET",
       new apigateway.LambdaIntegration(importProductsFile),
       {
         requestParameters: {
-          'method.request.querystring.name': true,
+          "method.request.querystring.name": true,
         },
       }
     );
-    
+
+    catalogBatchProcess.addEventSource(
+      new lambdaEventSources.SqsEventSource(catalogItemsQueue, {
+        batchSize: 5,
+      })
+    );
+
+    const sqsSendMessagePolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sqs:SendMessage"],
+      resources: [`${catalogItemsQueue.queueArn}`],
+    });
+
+    const importFileParserSQSPolicy = new iam.Policy(
+      this,
+      "ImportFileParserSQSPolicy",
+      {
+        statements: [sqsSendMessagePolicyStatement],
+      }
+    );
+
+    productsTable.grantReadWriteData(catalogBatchProcess);
+    stocksTable.grantReadWriteData(catalogBatchProcess);
+
+    importFileParser.role?.attachInlinePolicy(importFileParserSQSPolicy);
+
+    const snsPublishPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sns:Publish"],
+      resources: ["*"],
+    });
+
+    const catalogBatchProcessSNSPolicy = new iam.Policy(
+      this,
+      "CatalogBatchProcessSNSPolicy",
+      {
+        statements: [snsPublishPolicyStatement],
+      }
+    );
+    catalogBatchProcess.role?.attachInlinePolicy(catalogBatchProcessSNSPolicy);
   }
 }

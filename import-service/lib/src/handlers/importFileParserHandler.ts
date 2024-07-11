@@ -1,4 +1,5 @@
 import { S3Event, S3EventRecord, S3Handler } from "aws-lambda";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
   S3Client,
   GetObjectCommand,
@@ -7,8 +8,11 @@ import {
 } from "@aws-sdk/client-s3";
 import csv from "csv-parser";
 import { Readable } from "stream";
+import { CSV_HEADER } from "../support/constants";
 
 const s3Client = new S3Client({});
+const sqsClient = new SQSClient({});
+const queueUrl = process.env.CATALOG_ITEMS_QUEUE_URL;
 
 export const handler: S3Handler = async (event: S3Event) => {
   console.log("Received S3 event:", JSON.stringify(event, null, 2));
@@ -36,8 +40,17 @@ async function processRecord(record: S3EventRecord) {
   return new Promise<void>((resolve, reject) => {
     readableStream
       .pipe(csv())
-      .on("data", (data: any) => {
+      .on("data", async (data: any) => {
         console.log("Parsed record:", data);
+        const sendMessageCommand = new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify(data),
+        });
+        console.log(
+          `Sending messages to SQS: ${JSON.stringify(sendMessageCommand)}`
+        );
+        const result = await sqsClient.send(sendMessageCommand);
+        console.log(`Result: ${JSON.stringify(result)}`);
       })
       .on("error", (err: any) => {
         console.error("Error parsing CSV:", err);
@@ -61,9 +74,7 @@ async function processRecord(record: S3EventRecord) {
           Key: key,
         });
         await s3Client.send(deleteObjectCommand);
-
         console.log(`Moved object from ${key} to ${newKey}`);
-
         resolve();
       });
   });
