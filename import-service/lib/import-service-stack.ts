@@ -7,7 +7,7 @@ import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
-import { CANDY_STORE_BUCKET } from "./src/support/constants";
+import { CANDY_STORE_BUCKET, responseHeaders } from "./src/support/constants";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as dotenv from "dotenv";
@@ -61,6 +61,14 @@ export class ImportServiceStack extends cdk.Stack {
         BUCKET_NAME: bucket.bucketName,
         CATALOG_ITEMS_QUEUE_URL: catalogItemsQueue.queueUrl,
       },
+    });
+
+    const authorizerARN = cdk.Fn.importValue('BasicAuthorizerArn')
+    const authorizerFunction = lambda.Function.fromFunctionArn(this, 'ImportAuthorizer', authorizerARN)
+
+    const authorizer = new apigateway.TokenAuthorizer(this, 'APIGatewayBasicAuthorizer', {
+      handler: authorizerFunction,
+      identitySource: apigateway.IdentitySource.header('Authorization')
     });
 
     const createProductTopic = new sns.Topic(this, "createProductTopic", {
@@ -118,6 +126,24 @@ export class ImportServiceStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "ImportServiceApi", {
       restApiName: "Import Service API",
       description: "API for the Import Service",
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS, 
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+        allowCredentials: true
+      }
+    });
+
+    api.addGatewayResponse("GatewayResponseUnauthorized", {
+      type: cdk.aws_apigateway.ResponseType.UNAUTHORIZED,
+      responseHeaders,
+      statusCode:"401"
+    });
+
+    api.addGatewayResponse("GatewayResponseAccessDenied", {
+      type: cdk.aws_apigateway.ResponseType.ACCESS_DENIED,
+      responseHeaders,
+      statusCode:"403"
     });
 
     const importResource = api.root.addResource("import");
@@ -125,6 +151,8 @@ export class ImportServiceStack extends cdk.Stack {
       "GET",
       new apigateway.LambdaIntegration(importProductsFile),
       {
+        authorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
         requestParameters: {
           "method.request.querystring.name": true,
         },

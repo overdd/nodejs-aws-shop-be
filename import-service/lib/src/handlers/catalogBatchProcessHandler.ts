@@ -15,12 +15,13 @@ const dynamoDbService = new DynamoDbService(
 
 exports.handler = async (event: SQSEvent) => {
   console.log("Received SQS event:", JSON.stringify(event, null, 2));
+  const responses = [];
 
   for (const record of event.Records) {
     const parsedBody = JSON.parse(record.body);
     parsedBody.price = Number(parsedBody.price);
     parsedBody.count = Number(parsedBody.count);
-
+    console.log("Parsed product data:", parsedBody);
     try {
       const isValid = validate(parsedBody);
       if (!isValid) {
@@ -30,7 +31,7 @@ exports.handler = async (event: SQSEvent) => {
         continue;
       }
       const product = await dynamoDbService.createProduct(parsedBody);
-
+      console.log("Created product:", product);
       const publishCommand = new PublishCommand({
         TopicArn: process.env.CREATE_PRODUCT_TOPIC_ARN,
         Message: `${JSON.stringify(product)}`,
@@ -39,11 +40,11 @@ exports.handler = async (event: SQSEvent) => {
 
       await snsClient.send(publishCommand);
 
-      return {
+      responses.push({
         statusCode: 201,
         headers: corsHeaders,
         body: JSON.stringify(product),
-      };
+      });
     } catch (error) {
       console.error("Error creating a product:", error);
       return {
@@ -54,7 +55,7 @@ exports.handler = async (event: SQSEvent) => {
     }
   }
 
-  return { statusCode: 200, body: "Products created successfully" };
+  return { statusCode: 200, body: JSON.stringify(responses) };
 };
 
 export default exports.handler;
